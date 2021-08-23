@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "SLog",
+        "repositoryURL": "https://github.com/stillyoungman/SLog.git",
+        "state": {
+          "branch": null,
+          "revision": "387e3dedea5af2c0ded6818d51b96c0a1d2bea97",
+          "version": "0.0.1"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
