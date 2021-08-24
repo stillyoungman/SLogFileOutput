@@ -91,6 +91,9 @@ public class FileLogOutput: LogOutput {
     }
 
     public var archivedLogs: Data? {
+        // dump pending buffered logs before export
+        flush()
+
         let logFilesUrls = fileNameProvider
             .getUrlsOfFilesOlderThan(Calendar.current.date(byAdding: .year, value: 1,
                                                            to: Date()) ?? Date())
