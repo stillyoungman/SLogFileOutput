@@ -11,7 +11,7 @@ let package = Package(
             targets: ["SLogFileOutput"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/stillyoungman/SLog.git", from: "0.0.1"),
+        .package(url: "https://github.com/stillyoungman/SLog.git", from: "0.1.0"),
     ],
     targets: [
         .target(
