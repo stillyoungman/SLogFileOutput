@@ -16,12 +16,17 @@ public class FileLogOutput: LogOutput {
         return dateFormatter
     }()
 
-    private let fileNameProvider: LogOutputFileNameProvider
+    private static let defaultMaxLogFileSizeInBytes: UInt = 5 * 1024 * 1024
+    private static let defaultMaxLogFilesCount: Int = 5
+
+    private let fileNameProvider: FileNameProviderProtocol
     private let messageConverter: TemplatedMessageConverter
     private let stringifyLevel: (Level) -> String
     private let dateFormatter: DateFormatter
     private let maxBufferSize: Int
-    private let logFilePath: URL
+    private var logFilePath: URL
+    private let maxLogFileSizeInBytes: UInt
+    private let maxLogFilesCount: Int
 
     private var buffer: [String] = []
 
@@ -29,14 +34,21 @@ public class FileLogOutput: LogOutput {
                 messageConverter: TemplatedMessageConverter? = nil,
                 dateFormatter: DateFormatter? = nil,
                 maxBufferSize: Int = 10_000,
-                fileNameProvider: LogOutputFileNameProvider? = nil,
-                stringifyLevel: ((Level) -> String)? = nil) {
+                fileNameProvider: FileNameProviderProtocol? = nil,
+                stringifyLevel: ((Level) -> String)? = nil,
+                maxLogFileSizeInBytes: UInt? = nil,
+                maxLogFilesCount: Int? = nil) {
         self.messageConverter = messageConverter ?? DefaultMessageConverter.instance
         self.dateFormatter = dateFormatter ?? Self.defaultDateFormatter
         self.maxBufferSize = maxBufferSize
-        self.fileNameProvider = fileNameProvider ?? DefaultLogOutputFileNameProvider.instance
-        self.logFilePath = self.fileNameProvider.nextLogUrl()
+
+        let fileNameProvider =  FileNameProvider()
+        self.fileNameProvider = fileNameProvider
+        self.logFilePath = (fileNameProvider.urlsOfLogFilesSortedByIndex.last ?? fileNameProvider.nextLogUrl()!)
+
         self.stringifyLevel = stringifyLevel ?? Self.getSign(of:)
+        self.maxLogFileSizeInBytes = maxLogFileSizeInBytes ?? Self.defaultMaxLogFileSizeInBytes
+        self.maxLogFilesCount = maxLogFilesCount ?? Self.defaultMaxLogFilesCount
 
         #if os(iOS)
         NotificationCenter.default
@@ -167,6 +179,10 @@ public class FileLogOutput: LogOutput {
     private func flush() {
         if buffer.isEmpty { return }
 
+        if logFilePath.fileSize > maxLogFileSizeInBytes {
+            createNextFile()
+        }
+
         Self.flushQueue.sync {
             do {
                 try buffer.joined(separator: "\n")
@@ -179,6 +195,29 @@ public class FileLogOutput: LogOutput {
                 log(level: .error, message: .regular(error.localizedDescription),
                     source: nil, file: #file, function: #function, line: #line)
             }
+        }
+
+        removeExcessFiles()
+    }
+
+    private func createNextFile() {
+        guard let newLogFileUrl = fileNameProvider.nextLogUrl() else {
+            print("Unable create next file, cause there is no valid next URL for the log file.")
+            return
+        }
+
+        logFilePath = newLogFileUrl
+    }
+
+    private func removeExcessFiles() {
+        var logFiles: [URL] = fileNameProvider.urlsOfLogFilesSortedByIndex.reversed()
+        var extraFilesCount = logFiles.count - maxLogFilesCount
+
+        while extraFilesCount > 0 {
+            if let urlToRemove = logFiles.popLast() {
+                try? FileManager.default.removeItem(at: urlToRemove)
+            }
+            extraFilesCount -= 1
         }
     }
 
