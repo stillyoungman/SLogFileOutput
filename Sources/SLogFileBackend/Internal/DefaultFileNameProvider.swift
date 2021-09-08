@@ -1,34 +1,7 @@
 import Foundation
 import SLog
 
-struct LogName: Codable {
-    var index: UInt
-    var dateString: String
-
-    enum CodingKeys: String, CodingKey {
-        case index = "i"
-        case dateString = "d"
-    }
-}
-
-//extension LogName {
-//    init(from decoder: Decoder) throws {
-//        let values = try decoder.container(keyedBy: CodingKeys.self)
-//        index = try values.decode(UInt.self, forKey: .index)
-//        dateString = try values.decode(String.self, forKey: .dateString)
-//    }
-//}
-
-public protocol FileNameProviderProtocol {
-    func nextLogUrl() -> URL?
-    func getUrlsOfFilesOlderThan(_ date: Date) -> [URL]
-    var urlsOfLogFilesSortedByDate: [URL] { get }
-    var urlsOfLogFilesSortedByIndex: [URL] { get }
-    var logStorageDirectoryUrl: URL? { get }
-    var tempDirectoryUrl: URL? { get }
-}
-
-class FileNameProvider: FileNameProviderProtocol {
+class DefaultFileNameProvider: FileNameProviderProtocol {
     let dateFormatter: DateFormatter = {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "MM.dd.yyyy"
@@ -162,55 +135,5 @@ class FileNameProvider: FileNameProviderProtocol {
         else { return nil }
 
         return try? JSONDecoder().decode(LogName.self, from: data)
-    }
-}
-
-class DefaultLogOutputFileNameProvider: LogOutputFileNameProvider {
-    static let instance: DefaultLogOutputFileNameProvider = .init()
-
-    let dateFormatter: DateFormatter = {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        return dateFormatter
-    }()
-
-    func createLogFileName(with date: Date? = nil) -> String {
-        let dateString = dateFormatter.string(from: date ?? Date())
-        return "log_\(dateString).log"
-    }
-    func extractDateStringFromFileName(_ fileName: String) -> String {
-        fileName.replacingOccurrences(of: "log_", with: "")
-            .replacingOccurrences(of: ".log", with: "")
-    }
-
-    func nextLogUrl() -> URL {
-        logStorageDirectoryUrl.appendingPathComponent(createLogFileName())
-    }
-
-    func getUrlsOfFilesOlderThan(_ date: Date) -> [URL] {
-        do {
-            return (try FileManager.default
-                                .contentsOfDirectory(at: logStorageDirectoryUrl,
-                                                     includingPropertiesForKeys: nil))
-                .map { $0.lastPathComponent }
-                .map { extractDateStringFromFileName($0) }
-                .compactMap { dateFormatter.date(from: $0) }
-                .filter { $0 < date }
-                .map { logStorageDirectoryUrl.appendingPathComponent(createLogFileName(with: $0)) }
-        } catch {
-            return []
-        }
-    }
-
-    var logStorageDirectoryUrl: URL {
-        (try? FileManager.default.url(for: .documentDirectory,
-                                     in: .userDomainMask, appropriateFor: nil,
-                                     create: true))
-            ?? URL.init(fileURLWithPath: "")
-    }
-
-    var tempDirectoryUrl: URL? {
-        URL.init(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent(dateFormatter.string(from: Date()), isDirectory: true)
     }
 }

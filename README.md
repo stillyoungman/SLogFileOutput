@@ -1,1 +1,1 @@
-# SLog FileOutput
+# SLog FileBackend

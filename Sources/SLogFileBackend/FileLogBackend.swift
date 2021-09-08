@@ -5,10 +5,10 @@ import SLog
 import UIKit
 #endif
 
-public class FileLogOutput: LogOutput {
-    private static var serialQueue = DispatchQueue(label: "FileLogOutputSerialQueue",
+public class FileLogBackend: LogBackend {
+    private static var serialQueue = DispatchQueue(label: "FileLogBackendSerialQueue",
                                                    qos: .default)
-    private static var flushQueue = DispatchQueue(label: "FileLogOutputSerialQueueFlashOperation",
+    private static var flushQueue = DispatchQueue(label: "FileLogBackendSerialQueueFlashOperation",
                                                    qos: .userInitiated)
     private static let defaultDateFormatter: DateFormatter = {
         let dateFormatter = DateFormatter()
@@ -42,7 +42,7 @@ public class FileLogOutput: LogOutput {
         self.dateFormatter = dateFormatter ?? Self.defaultDateFormatter
         self.maxBufferSize = maxBufferSize
 
-        let fileNameProvider =  FileNameProvider()
+        let fileNameProvider = fileNameProvider ?? DefaultFileNameProvider()
         self.fileNameProvider = fileNameProvider
         self.logFilePath = (fileNameProvider.urlsOfLogFilesSortedByIndex.last ?? fileNameProvider.nextLogUrl()!)
 
@@ -63,7 +63,7 @@ public class FileLogOutput: LogOutput {
                          object: nil)
         #endif
 
-        // add new line when log output created.
+        // add new line when log backend created e.g. system starts.
         try? "\n".data(using: .utf8)?.append(fileURL: logFilePath)
     }
 
